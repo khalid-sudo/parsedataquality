@@ -1,0 +1,204 @@
+object RandomFunctions {
+  /**
+   * Generate a random value for column1.
+   *
+   * @quality This function generates a unique value for column1.
+   * @return A random unique value for column1.
+   */
+  def unique(column1: String): String = {
+    // Generate a unique value logic for column1
+    s"Unique value for $column1"
+  }
+
+  /**
+   * @quality This function generates a unique value for column2.
+   *
+   * @quality This function generates a unique value for column2.
+   * @return A random unique value for column2.
+   */
+  def unique(column2: String): String = {
+    // Generate a unique value logic for column2
+    s"Unique value for $column2"
+  }
+
+  /**
+   * Generate a random date shape for column5.
+   *
+   * @quality This function generates a date shape for column5.
+   * @return A random date shape for column5.
+   */
+  def date_shape(column5: String): String = {
+    // Generate a date shape logic for column5
+    s"Date shape for $column5"
+  }
+
+  // Main function to test the above functions
+  def main(args: Array[String]): Unit = {
+    val result1 = unique("column1")
+    val result2 = unique("column2")
+    val result3 = date_shape("column5")
+
+    println(result1)
+    println(result2)
+    println(result3)
+  }
+}
+//////////////////////////////////
+
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkConf
+object RandomQuality {
+  /**
+   * Generate a random quality value.
+   *
+   * @return A random quality value between 1 and 10.
+   * @quality  unique(column1);unique(column2);date_shape(column5);is_in(column3,['A','B'])
+   */
+  def generateRandomQuality(): Int = {
+    val random = scala.util.Random
+    random.nextInt(10) + 1
+  }
+
+  /**
+   * Generate value.
+   *
+   * @return A random quality value between 1 and 10.
+   * @quality  unique(column1);unique(column2);date_shape(column5)
+   */
+  def generatRandomQuality(): Int = {
+    val random = scala.util.Random
+    random.nextInt(10) + 1
+  }
+
+  /**
+   * Main Run Execution for the function main
+   *
+   * @database [[my_database_db]]
+   * @table [[my_table_db]]
+   * @return [[dictionnaryStr_dataproduct_mainRun]]
+   * @quality ;date_shape(Column3, yyyy-MM-dd);unique(Column1)
+   */
+  def createDataFrame(): org.apache.spark.sql.DataFrame = {
+    val spark: SparkSession = SparkSession.builder()
+      .appName("createDataFrame")
+      .master("local[*]") // you can adjust this as needed
+      .getOrCreate()
+
+    import spark.implicits._
+
+    val dataSeq = Seq(("value1", "NA", "2021-12-10"), ("value2", "NA", "2021-12-11"))
+    val df = dataSeq.toDF("Column1", "Column2", "Column3")
+
+    //val df: org.apache.spark.sql.DataFrame = data.toDF("Name", "Age")
+
+    df
+  }
+  /**
+   * Main Run Execution for the function main
+   * @database [[my_database_db]]
+   * @table [[my_table_db]]
+   * @return [[dictionnaryStr_dataproduct_mainRun]]
+   * @quality  ;unique(column1);unique(column2);date_shape(column5);is_in(column3,['A','B'])
+   */
+  def randomDataFrameFunction(inputDf: DataFrame): DataFrame = {
+    // Perform some random operation on the DataFrame
+    // Here we're simply returning the input DataFrame without modification for example's sake
+    return inputDf
+  }
+
+}
+/////////
+import org.apache.spark.sql.DataFrame
+
+import scala.Console.println
+import scala.meta._
+import scala.reflect.runtime.universe
+import org.apache.log4j.{Level, Logger}
+
+import scala.:+
+
+object TagExtractor {
+  case class FileContent(comments: IndexedSeq[String], parsed: Parsed[Source])
+  def callFunctionByName(className: String, functionName: String, params: Seq[Any]): Any = {
+    val mirror = universe.runtimeMirror(getClass.getClassLoader)
+    val module = mirror.staticModule(className)
+    val im = mirror.reflectModule(module)
+    val methodSymbol = im.symbol.typeSignature.member(universe.TermName(functionName)).asMethod
+    val method = mirror.reflect(im.instance).reflectMethod(methodSymbol)
+    try {
+      method(params: _*)
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        throw e
+    }
+  }
+  def extractComments_and_parsedCode_FromFile(filePath: String): FileContent = {
+    val scalaCode = scala.io.Source.fromFile(filePath).mkString
+    val tokens = scalaCode.tokenize.get
+    val comments = tokens.collect {
+      case Token.Comment(comment) => comment
+    }
+    val parsed: Parsed[Source] = scalaCode.parse[Source]
+    FileContent(comments, parsed)
+  }
+  def tree_traverser(tree:Source,qualityTags:IndexedSeq[String]):List[(String, Any)] = {
+    var functionToQuality = Map.empty[String, String]
+    var results = List.empty[(String, Any)]
+    tree.traverse {
+      case q"..$mods  def $name[..$tparams](...$paramss): $tpeopt = $expr" =>
+        val funcName = name.value
+        val funcParams = paramss.flatten.map(_.name.value).mkString(", ")
+        // Look for the corresponding quality tag
+        val associatedQualityTag = qualityTags.find(_.contains(s"@quality"))
+        associatedQualityTag.foreach(tag => {
+          val tagContent = tag.substring(tag.indexOf("@quality") + 8)
+          functionToQuality += (funcName -> tagContent)
+          println(s"Function Name: $funcName")
+          println(s"@quality content: $tagContent\n")
+          println(s"Function Parameters: $funcParams")
+          println(s"Function body: ${expr.syntax}\n")
+          println(s"Function output: ${tpeopt}\n")
+          val splitTag = tagContent.split(";")
+          val dfGenClassName = "RandomQuality" // Replace with your logic to determine the class name
+          val dfGenFuncName = funcName // Use the function name as the method to be called
+          val df: DataFrame = callFunctionByName(dfGenClassName, funcName, Seq.empty).asInstanceOf[DataFrame]
+          //println(df.show())
+          val initialFunction = splitTag(0).trim
+          val checks = splitTag.drop(1).map(_.trim)
+          checks.foreach { check =>
+            val parts = check.split("[(),]")
+            val className = parts(0).trim.capitalize // Assuming the classname matches the function name but is capitalized
+            println(s"ClassName: $className")
+            val functionName = parts(0).trim
+            println(s"FunctionName: $functionName")
+            val parameters = Seq(df) ++ parts.drop(1).map(_.replace("[", "").replace("]", "").trim)
+            //println(s"Parameters: ${parameters.mkString(", ")}")
+            val result = callFunctionByName(s"$className", functionName, parameters)
+            results = results :+ (s"$className.$functionName", result)
+          }
+        })
+      case _ =>
+    }
+    results
+  }
+
+  def main(args: Array[String]): Unit = {
+    val filePath = "/Users/khalid/IdeaProjects/untitled/src/main/scala/RandomQuality.scala"
+    val result = extractComments_and_parsedCode_FromFile(filePath)
+    val comments = result.comments
+    val parsed =result.parsed
+    val qualityTags = comments.filter(_.contains("@quality"))
+    //val parsed: Parsed[Source] = scalaCode.parse[Source]
+    parsed match {
+      case Parsed.Success(tree) =>
+        // Create a mapping of function names to quality tags
+        //var functionToQuality = Map.empty[String, String]
+        val results = tree_traverser(tree, qualityTags)
+        print(results)
+      case Parsed.Error(pos, message, _) =>
+        println(s"Error parsing source code: $message")
+    }
+  }
+}
